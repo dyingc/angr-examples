@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+						"cwd": "${fileDirname}",
+            "justMyCode": true
+        },
+        {
+            "name": "Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+						"cwd": "${fileDirname}",
+            "args": "${command:pickArgs}",
+            "justMyCode": true
+        },
+        {
+            "name": "CTF csaw",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/csaw_wyvern/solve.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
