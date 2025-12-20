@@ -15,7 +15,7 @@ state = proj.factory.call_state(
     add_options={
         angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
         angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS,
-        angr.options.LAZY_SOLVES
+        angr.options.LAZY_SOLVES # 关键选项，没有的话，直接卡死
     }
 )
 
@@ -28,12 +28,9 @@ class PtraceSuccess(angr.SimProcedure):
 
 proj.hook_symbol('ptrace', PtraceSuccess())
 
-def should_avoid(state):
-    return b"NOPE" in state.posix.dumps(1)
-
 simgr = proj.factory.simulation_manager(state)
 
-simgr.explore(find=0x405a6e, avoid=should_avoid)
+simgr.explore(find=0x405a6e)
 
 if simgr.found:
     solution = simgr.found[0].solver.eval(buff, cast_to=bytes)
