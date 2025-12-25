@@ -1,7 +1,7 @@
 import angr
 import claripy
 from angr.sim_state import SimState
-from angr.storage.file import SimPackets
+from angr.storage.file import SimPackets, SimFile
 from claripy.ast.bv import BV
 from typing import List, Tuple
 
@@ -24,15 +24,9 @@ def main():
     project = angr.Project('./CADET_00001.adapted', auto_load_libs=False)
 
     # Create a symbolic bitvector for input
-    input_size = 1 # Adjust size as needed
-    n_packets = 0x80 + 4
-    symbolic_inputs: List[BV] = []
-    input_contents: List[Tuple[BV, int]] = []
-    for i in range(n_packets):
-        symbolic_inputs.append(claripy.BVS(f'input_chunk_{i}', input_size * 8))
-        input_contents.append((symbolic_inputs[-1], input_size))
-
-    input = SimPackets(name='input', content=input_contents)
+    input_size = 100 # Adjust size as needed
+    input_variable = claripy.BVS('input_variable', input_size * 8)
+    input = angr.SimFile('/dev/stdin', content=input_variable)
 
     # Create an initial state with the symbolic input
     initial_state = project.factory.entry_state(
@@ -49,14 +43,13 @@ def main():
     initial_state.inspect.b('instruction', when=angr.BP_BEFORE, action=inspect_function)
 
     # Constraint input to be printable characters or null bytes
-    for symbolic_input in symbolic_inputs:
-        for byte in symbolic_input.chop(8):
-            initial_state.solver.add(
-                claripy.Or(
-                    claripy.And(byte >= 0x0, byte <= 0x7e),  # Printable characters
-                    byte == 0x00  # Null byte
-                )
+    for byte in input_variable.chop(8):
+        initial_state.solver.add(
+            claripy.Or(
+                claripy.And(byte >= 0x20, byte <= 0x7e),  # Printable ASCII
+                byte == 0x30  # Null byte
             )
+        )
 
     # Create a simulation manager
     simgr = project.factory.simulation_manager(initial_state)
@@ -70,8 +63,8 @@ def main():
     # addr = 0x804885f # after receive_delim - unreachable
     # addr = 0x80485c3 # ready to call receive
     # addr = 0x80485c8 # after receive - unreachable
-    addr = 0x8048676 # before calling read
-    addr = 0x804867b # after read - unreachable
+    # addr = 0x8048676 # before calling read
+    # addr = 0x804867b # after read - unreachable
     # success_address.append(addr)
 
     simgr.explore(find=success_address, avoid=avoid_addresses)
@@ -81,15 +74,11 @@ def main():
         import sys
         # solution = state.posix.dumps(sys.stdin.fileno())
         # Alternatively, evaluate the symbolic inputs directly
-        solution = []
-        for i, symbolic_input in enumerate(symbolic_inputs):
-            chunk = state.solver.eval(symbolic_input, cast_to=bytes)
-            solution.append(chunk)
-        solution = b''.join(solution)
+        solution = state.solver.eval(input_variable, cast_to=bytes)
         print(f'Solution found: {solution}')
     elif simgr.unconstrained:
         unconstrained_state = simgr.unconstrained[0]
-        solution = unconstrained_state.solver.eval(symbolic_inputs, cast_to=bytes)
+        solution = unconstrained_state.solver.eval(input_variable, cast_to=bytes)
         print(f'[WARNING!!!] Solution found in unconstrained state: {solution}')
     else:
         print('No solution found.')
