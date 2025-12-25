@@ -24,7 +24,7 @@ def main():
     project = angr.Project('./CADET_00001.adapted', auto_load_libs=False)
 
     # Create a symbolic bitvector for input
-    input_size = 100 # Adjust size as needed
+    input_size = 0x58 + 4 + 4 # The buf address is: $ebp - 0x58, plus 4 bytes for ebp and 4 bytes for eip
     input_variable = claripy.BVS('input_variable', input_size * 8)
     input = angr.SimFile('/dev/stdin', content=input_variable)
 
@@ -39,15 +39,15 @@ def main():
         }
     )
 
-    # Inspect the "read" function
-    initial_state.inspect.b('instruction', when=angr.BP_BEFORE, action=inspect_function)
+    # # Inspect the "read" function
+    # initial_state.inspect.b('instruction', when=angr.BP_BEFORE, action=inspect_function)
 
     # Constraint input to be printable characters or null bytes
     for byte in input_variable.chop(8):
         initial_state.solver.add(
             claripy.Or(
-                claripy.And(byte >= 0x20, byte <= 0x7e),  # Printable ASCII
-                byte == 0x30  # Null byte
+                claripy.And(byte >= 0x65, byte <= 0x69),  # Printable ASCII
+                byte == 0x68  # Null byte
             )
         )
 
